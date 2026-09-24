@@ -15,6 +15,7 @@ Checks:
 
 ```bash
 npm run typecheck  # app + server
+npm run lint
 npm test           # scoring, sealing and server tests
 ```
 
@@ -28,7 +29,7 @@ npm test           # scoring, sealing and server tests
 | Session results | `src/app/results.tsx` |
 | Progress (streak, per-level accuracy vs baseline, calibration, seal ledger) | `src/app/(tabs)/progress.tsx` |
 | Membership (4 tiers + 1-to-1 trainer session) | `src/app/(tabs)/membership.tsx`, `src/app/trainer.tsx` |
-| Profile, how blind testing works | `src/app/(tabs)/profile.tsx`, `src/app/how-it-works.tsx` |
+| Profile, how blind testing works, privacy policy | `src/app/(tabs)/profile.tsx`, `src/app/how-it-works.tsx`, `src/app/privacy.tsx` |
 
 ```
 src/
@@ -36,10 +37,11 @@ src/
   components/   shared UI
   constants/    theme, config
   data/         verses, levels, targets, tips, tiers
-  services/     targetService (getTarget/startSession/revealTarget), scoring, storage, purchases
+  services/     targetService (getTarget/startSession/revealTarget), scoring, storage,
+                account, purchases (RevenueCat), bookings
   state/        AppState provider (progress + tier, saved with AsyncStorage)
   types/
-server/         target sealing server (same trial code as the app)
+server/         target server: sealing, accounts, plan checks, bookings (same trial code as the app)
 tests/
 ```
 
@@ -53,48 +55,77 @@ tests/
 
 ## Two modes for sealing targets
 
-**Device mode** (default, no setup): targets are sealed on the phone. That proves targets aren't swapped, but a determined user could inspect the device, so this is practice-grade.
+**Device mode** (no `EXPO_PUBLIC_API_URL`): targets are sealed on the phone. That proves targets aren't swapped, but a determined user could inspect the device, so this is practice-grade.
 
-**Server mode** (for launch): the server picks and seals targets, and the answer never reaches the phone until the user has committed a perception.
+**Server mode** (for launch): the server picks and seals targets, and the answer never reaches the phone until the user has committed a perception. It also:
+- gives each install an anonymous account (`/auth/device`, token kept in the device's secure storage),
+- checks the user's plan with RevenueCat before starting any level, and enforces the free tier's 3 sessions a day (a session counts once its first target is opened),
+- receives trainer booking requests.
 
 ```bash
-npm run server                                   # listens on :8787
-EXPO_PUBLIC_API_URL=http://<your-ip>:8787 npm start
+npm run server                                   # dev, listens on :8787
+EXPO_PUBLIC_API_URL=http://<your-computer-ip>:8787 npx expo start --clear
 ```
 
-The server keeps state in memory (6-hour expiry). Run a single instance, or move it to Redis or Postgres before you scale out. It installs with dev dependencies (`tsx`), so on a host like Railway or Render don't set `NODE_ENV=production` during install. Start command: `npm run server`. Set `CORS_ORIGIN` if you ship the web build.
+### Deploying the server
 
-## Environment variables
+`npm run build:server` bundles it into one dependency-free file, `dist-server/index.mjs`. The `Dockerfile` builds and runs that file. Any Docker host works (Railway, Render, Fly.io).
+
+| Server variable | Purpose |
+| --- | --- |
+| `SERVER_SECRET` | **Required in production.** Signs device tokens. Any long random string (`openssl rand -hex 32`). Changing it signs everyone out. |
+| `REVENUECAT_SECRET_KEY` | RevenueCat secret API key (v1). Without it the server runs "open" and treats every user as `OPEN_MODE_TIER` (default `master`). |
+| `TRAINER_WEBHOOK_URL` | Optional. Booking requests are posted here as `{ text }` (Slack, Discord, Zapier, Make). They are always saved to `DATA_DIR/bookings.jsonl` too. |
+| `DATA_DIR` | Where bookings are saved (`/data` in Docker). Mount a volume there. |
+| `CORS_ORIGIN` | Restrict browser access if you ship the web build. |
+| `PORT` | Default 8787. |
+
+Trial state is kept in memory for 6 hours, so run one instance. Move it to Redis or Postgres before you scale out.
+
+## App environment variables
+
+Set these as EAS environment variables (`npx eas-cli@latest env:create`) for the `production` environment.
 
 | Variable | Purpose |
 | --- | --- |
 | `EXPO_PUBLIC_API_URL` | Target server URL. Unset = device mode. |
-| `EXPO_PUBLIC_TRAINER_EMAIL` | Where trainer booking requests are emailed. Unset = bookings show "opening soon". |
-| `EXPO_PUBLIC_SIMULATE_PURCHASES` | `true` lets anyone switch plans for free (on in dev and in the `preview` EAS profile). **Must be unset in production.** |
+| `EXPO_PUBLIC_REVENUECAT_IOS_KEY` / `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` | RevenueCat public SDK keys. Turn on real purchases. |
+| `EXPO_PUBLIC_SUPPORT_EMAIL` | Shown in the privacy policy. |
+| `EXPO_PUBLIC_TRAINER_EMAIL` | Only used in device mode: trainer requests open the user's email app addressed here. |
+| `EXPO_PUBLIC_SIMULATE_PURCHASES` | `true` lets anyone switch plans for free (on in dev and in the `development` and `preview` profiles). **Never set it for production.** |
 
-`EXPO_PUBLIC_*` values are baked in at build time. After changing one, run with `--clear` (`npx expo start --clear`) or the old value can stick.
+`EXPO_PUBLIC_*` values are baked in at build time. After changing one, run with `--clear` or the old value can stick.
+
+## Payments (RevenueCat)
+
+1. Create the subscriptions in App Store Connect and Google Play Console (e.g. `prophesee_seeker_monthly`, `prophesee_advanced_monthly`, `prophesee_master_monthly`).
+2. In RevenueCat, add both apps, then create entitlements named exactly `seeker`, `advanced` and `master` and attach each product.
+3. Make an offering, mark it current, and add three packages with custom identifiers `seeker`, `advanced` and `master`.
+4. Put the public SDK keys in the app env vars and the secret key in `REVENUECAT_SECRET_KEY` on the server.
+
+The app shows the store's localized prices once products load. Real purchases need a development or store build. Expo Go runs RevenueCat in preview mode. Downgrades and cancellations happen in the store's subscription settings, and the app links users there.
 
 ## Launch checklist
 
 Done in the code:
-- [x] Full training loop, all 8 levels, both paths, results, progress, membership, trainer request
-- [x] Server sealing with blind-session enforcement
-- [x] App identifiers (`com.prophesee.app`), dark splash, EAS build profiles (`eas.json`)
-- [x] Unit and server tests
+- [x] Full training loop, all 8 levels, both paths, results, progress, membership, trainer requests
+- [x] Server sealing, blind-session enforcement, anonymous accounts, plan checks, free daily limit, rate limiting
+- [x] RevenueCat subscriptions with restore, plus simulated plans for testing
+- [x] Privacy policy (in app under Profile, and `docs/privacy-policy.md` to host for the store listings), subscription terms text, EULA link
+- [x] App icon, adaptive Android icon, splash screen
+- [x] App identifiers (`com.prophesee.app`), EAS profiles, Dockerfile
+- [x] Typecheck, lint, unit and server tests
 
-Still needed before the stores:
-1. **Accounts.** Create an [Expo](https://expo.dev) account, an Apple Developer account ($99/year) and a Google Play Console account ($25 one-time). Change `com.prophesee.app` in `app.json` if you want a different ID. It can't be changed after the first store release.
-2. **Payments.** App Store and Play rules require in-app purchase for digital subscriptions. Connect RevenueCat or `expo-iap` inside `src/services/purchases.ts` (the only file that changes plans). Create the three subscriptions in App Store Connect and Play Console. Then the server should check the user's plan before serving levels 3–8, which needs user accounts.
-3. **Host the server** (Railway, Render, Fly.io) and set `EXPO_PUBLIC_API_URL` in the production EAS profile.
-4. **Trainer sessions.** Set `EXPO_PUBLIC_TRAINER_EMAIL`. A live paid session is a real-world service, so it can be paid outside in-app purchase. Take payment by invoice or a payment link when the trainer replies.
-5. **Branding.** Replace the icon and splash images in `assets/` (they are the Expo defaults).
-6. **Store listing.** Privacy policy URL (progress stays on the device; server mode sends answers to your server), screenshots, description, age rating.
-7. **Build and submit:**
+What you need to do:
+1. **Accounts:** [Expo](https://expo.dev), Apple Developer ($99/year), Google Play Console ($25 once), [RevenueCat](https://www.revenuecat.com) (free until revenue grows). If you want a different app ID than `com.prophesee.app`, change it in `app.json` before the first release.
+2. **Set up products** in the stores and RevenueCat as described above. Set your prices there. The prices in `src/data/tiers.ts` are only a fallback.
+3. **Deploy the server** with `SERVER_SECRET` and `REVENUECAT_SECRET_KEY`. Put its URL in `EXPO_PUBLIC_API_URL`.
+4. **Host the privacy policy** (e.g. as a GitHub Pages page from `docs/privacy-policy.md`), add your support email, and use its URL in both store listings.
+5. **Test on a phone:** `npx eas-cli@latest build --profile preview --platform android` gives an installable APK with simulated plans.
+6. **Release:**
    ```bash
    npx eas-cli@latest login
-   npx eas-cli@latest build --profile preview --platform android   # installable test APK
    npx eas-cli@latest build --profile production --platform all
    npx eas-cli@latest submit --platform all
    ```
-
-Prices in `src/data/tiers.ts` are display placeholders. Once billing is connected, show the store's localized prices instead.
+   Then fill in the store listings (screenshots, description, age rating, data safety form: anonymous id, trainer contact details, purchase history).

@@ -16,7 +16,7 @@ import { Body, Eyebrow, Heading, Muted, Title } from '../../components/Typograph
 import { colors, fonts, radius, space } from '../../constants/theme';
 import { getLevel } from '../../data/levels';
 import { tiers } from '../../data/tiers';
-import { isServerMode } from '../../services/api';
+import { ApiError, isServerMode } from '../../services/api';
 import { answerLabel, tipFor } from '../../services/describe';
 import { newId } from '../../services/entropy';
 import { average, feedbackFor, scoreRound, xpFor } from '../../services/scoring';
@@ -72,6 +72,7 @@ function Session({ level, path }: { level: Level; path: PathId }) {
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [error, setError] = useState('');
+  const [upgradable, setUpgradable] = useState(false);
   const [trials, setTrials] = useState<SealedTrial[]>([]);
   const [index, setIndex] = useState(0);
   const [draft, setDraft] = useState<Perception>({});
@@ -91,6 +92,7 @@ function Session({ level, path }: { level: Level; path: PathId }) {
       .catch((e: Error) => {
         if (!alive) return;
         setError(e.message);
+        setUpgradable(e instanceof ApiError && (e.status === 403 || e.status === 429));
         setPhase('error');
       });
     return () => {
@@ -211,9 +213,10 @@ function Session({ level, path }: { level: Level; path: PathId }) {
 
       {phase === 'error' && (
         <Card>
-          <Heading>Something went wrong</Heading>
+          <Heading>{upgradable ? "Can't start this session" : 'Something went wrong'}</Heading>
           <Body>{error}</Body>
-          <Button label="Back to levels" onPress={() => router.replace('/train')} />
+          {upgradable && <Button label="View memberships" onPress={() => router.replace('/membership')} />}
+          <Button label="Back to levels" variant={upgradable ? 'secondary' : 'primary'} onPress={() => router.replace('/train')} />
         </Card>
       )}
 

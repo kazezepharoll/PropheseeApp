@@ -9,7 +9,7 @@ import { Screen } from '../../components/Screen';
 import { Body, Eyebrow, Heading, Muted, Title } from '../../components/Typography';
 import { colors, space } from '../../constants/theme';
 import { tierOrder, tierRank, tiers, trainerSession } from '../../data/tiers';
-import { purchaseTier, purchasesSimulated, restorePurchases } from '../../services/purchases';
+import { billingAvailable, PurchaseCancelled, purchaseTier, purchasesSimulated, restorePurchases, storePrice } from '../../services/purchases';
 import { useAppState } from '../../state/AppState';
 import type { TierId } from '../../types';
 
@@ -19,15 +19,17 @@ function show(title: string, message: string) {
 }
 
 export default function Membership() {
-  const { state, setTier } = useAppState();
+  const { state, setTier, billingReady } = useAppState();
   const [busy, setBusy] = useState<TierId | 'restore' | null>(null);
 
   const choose = async (id: TierId) => {
     setBusy(id);
     try {
-      setTier(await purchaseTier(id));
+      const tier = await purchaseTier(id, state.tier);
+      setTier(tier);
+      if (billingAvailable && tier === id) show('Welcome', `You are now a ${tiers[id].name} member. Thank you for supporting PropheSee.`);
     } catch (e) {
-      show('Membership', (e as Error).message);
+      if (!(e instanceof PurchaseCancelled)) show('Membership', (e as Error).message);
     } finally {
       setBusy(null);
     }
@@ -36,7 +38,11 @@ export default function Membership() {
   const restore = async () => {
     setBusy('restore');
     try {
-      setTier(await restorePurchases(state.tier));
+      const tier = await restorePurchases(state.tier);
+      setTier(tier);
+      show('Restore purchases', tier === 'free' ? 'No active membership was found for this store account.' : `Restored your ${tiers[tier].name} membership.`);
+    } catch (e) {
+      show('Restore purchases', (e as Error).message);
     } finally {
       setBusy(null);
     }
@@ -60,11 +66,14 @@ export default function Membership() {
         const tier = tiers[id];
         const current = id === state.tier;
         const higher = tierRank(id) > tierRank(state.tier);
+        // With real billing, downgrades happen in the store's subscription settings.
+        const canChoose = higher || !billingAvailable;
+        const price = id === 'free' ? tier.price : (storePrice(id) ?? (billingAvailable && !billingReady ? '…' : tier.price));
         return (
           <Card key={id} highlighted={current}>
             <View style={styles.between}>
               <Heading>{tier.name}</Heading>
-              <Body style={styles.price}>{tier.price}</Body>
+              <Body style={styles.price}>{price}</Body>
             </View>
             <Muted style={styles.gold}>{tier.tagline}</Muted>
             {tier.perks.map((perk) => (
@@ -75,7 +84,7 @@ export default function Membership() {
             ))}
             {current ? (
               <Button label="Your current plan" variant="secondary" disabled onPress={() => {}} />
-            ) : (
+            ) : !canChoose ? null : (
               <Button
                 label={higher ? `Upgrade to ${tier.name}` : `Switch to ${tier.name}`}
                 variant={higher ? 'primary' : 'secondary'}
@@ -96,7 +105,16 @@ export default function Membership() {
         <Button label="Request a session" onPress={() => router.push('/trainer')} />
       </Card>
 
-      <Button label="Restore purchases" variant="ghost" loading={busy === 'restore'} onPress={restore} />
+      {billingAvailable && (
+        <>
+          <Button label="Restore purchases" variant="ghost" loading={busy === 'restore'} onPress={restore} />
+          <Muted style={styles.legal}>
+            Subscriptions renew automatically until cancelled. Manage or cancel any time in your store account settings. Payment is
+            charged to your App Store or Google Play account.
+          </Muted>
+          <Button label="Privacy policy and terms" variant="ghost" onPress={() => router.push('/privacy')} />
+        </>
+      )}
     </Screen>
   );
 }
@@ -107,4 +125,5 @@ const styles = StyleSheet.create({
   price: { color: colors.gold, fontWeight: '700' },
   gold: { color: colors.goldSoft },
   perk: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
+  legal: { textAlign: 'center', fontSize: 12 },
 });

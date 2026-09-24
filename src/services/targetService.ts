@@ -1,5 +1,6 @@
 import { findTarget } from '../data/targets';
 import type { Level, PathId, Perception, Reveal, SealedTrial } from '../types';
+import { ensureSignedIn } from './account';
 import { api, isServerMode } from './api';
 import { deviceEntropy, newId } from './entropy';
 import { createTrial, sealInput, targetsFromKey, type TrialSecret } from './trialFactory';
@@ -20,6 +21,7 @@ export async function getTarget(level: Level, round: number): Promise<SealedTria
 /** Seal every round of a session before the first round begins. */
 export async function startSession(level: Level, path: PathId): Promise<SealedTrial[]> {
   if (isServerMode) {
+    await ensureSignedIn();
     const res = await api.post<{ trials: SealedTrial[] }>('/training/sessions', { levelId: level.id, path });
     return res.trials;
   }

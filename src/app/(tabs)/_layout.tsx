@@ -7,7 +7,10 @@ import { colors } from '../../constants/theme';
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 function icon(name: IconName) {
-  return ({ color, size }: { color: ColorValue; size: number }) => <MaterialCommunityIcons name={name} color={color as string} size={size} />;
+  const TabIcon = ({ color, size }: { color: ColorValue; size: number }) => (
+    <MaterialCommunityIcons name={name} color={color as string} size={size} />
+  );
+  return TabIcon;
 }
 
 export default function TabLayout() {

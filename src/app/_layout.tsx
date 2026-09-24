@@ -33,6 +33,7 @@ function RootNavigator() {
       <Stack.Screen name="session/[levelId]" options={{ gestureEnabled: false, animation: 'fade' }} />
       <Stack.Screen name="results" options={{ headerShown: true, title: 'Session Results', headerBackTitle: 'Back' }} />
       <Stack.Screen name="trainer" options={{ headerShown: true, title: 'Trainer Session', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="privacy" options={{ headerShown: true, title: 'Privacy Policy', headerBackTitle: 'Back' }} />
       <Stack.Screen name="how-it-works" options={{ headerShown: true, title: 'How Blind Testing Works', headerBackTitle: 'Back' }} />
     </Stack>
   );

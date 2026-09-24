@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fonts, space } from '../constants/theme';
@@ -8,7 +8,7 @@ const INTERVAL_MS = 7000;
 
 export function VerseCarousel() {
   const [index, setIndex] = useState(() => Math.floor(Math.random() * verses.length));
-  const opacity = useRef(new Animated.Value(1)).current;
+  const [opacity] = useState(() => new Animated.Value(1));
 
   const go = (next: number) => {
     Animated.timing(opacity, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => {

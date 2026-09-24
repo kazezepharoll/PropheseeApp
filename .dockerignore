@@ -1,0 +1,9 @@
+node_modules
+.expo
+dist
+dist-server
+data
+assets
+ios
+android
+.git

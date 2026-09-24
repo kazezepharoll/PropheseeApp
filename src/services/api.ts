@@ -7,20 +7,47 @@ export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, ''
 
 export const isServerMode = API_URL.length > 0;
 
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null): void {
+  authToken = token;
+}
+
+export function hasAuthToken(): boolean {
+  return authToken !== null;
+}
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method,
+      headers: {
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new ApiError(0, 'Could not reach the PropheSee server. Check your connection and try again.');
+  }
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Server error ${res.status}${text ? `: ${text}` : ''}`);
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new ApiError(res.status, data?.error ?? `Server error ${res.status}`);
   }
   return (await res.json()) as T;
 }
 
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
+  post: <T>(path: string, body: unknown = {}) => request<T>('POST', path, body),
 };

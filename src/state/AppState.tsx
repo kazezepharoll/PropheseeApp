@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { tiers, tierRank } from '../data/tiers';
+import { loadAccount, type Account } from '../services/account';
+import { isServerMode } from '../services/api';
+import { initPurchases } from '../services/purchases';
 import { clearState, initialState, loadState, saveState } from '../services/storage';
 import type { Level, PersistedState, SessionRecord, TierId, TrainerBooking } from '../types';
 
@@ -12,6 +15,9 @@ export interface Access {
 interface AppStateValue {
   ready: boolean;
   state: PersistedState;
+  account: Account | null;
+  /** True once store products have loaded, so prices can be shown. */
+  billingReady: boolean;
   sessionsToday: number;
   completeOnboarding: () => void;
   setDisplayName: (name: string) => void;
@@ -34,6 +40,8 @@ function isToday(iso: string): boolean {
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [state, setState] = useState<PersistedState>(initialState);
+  const [account, setAccount] = useState<Account | null>(null);
+  const [billingReady, setBillingReady] = useState(false);
   const loaded = useRef(false);
 
   useEffect(() => {
@@ -41,6 +49,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       loaded.current = true;
       setState(s);
       setReady(true);
+    });
+    loadAccount().then(async (a) => {
+      setAccount(a);
+      // In server mode purchases must belong to the server-issued id; stay anonymous until we have one.
+      const billingUser = isServerMode ? (a.token ? a.userId : null) : a.userId;
+      await initPurchases(billingUser, (tier) => setState((s) => (s.tier === tier ? s : { ...s, tier })));
+      setBillingReady(true);
     });
   }, []);
 
@@ -77,6 +92,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     () => ({
       ready,
       state,
+      account,
+      billingReady,
       sessionsToday,
       completeOnboarding: () => update((s) => ({ ...s, onboarded: true })),
       setDisplayName: (displayName) => update((s) => ({ ...s, displayName })),
@@ -90,7 +107,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       levelAccess,
       canStartSession,
     }),
-    [ready, state, sessionsToday, update, levelAccess, canStartSession],
+    [ready, state, account, billingReady, sessionsToday, update, levelAccess, canStartSession],
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

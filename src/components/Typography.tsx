@@ -7,6 +7,7 @@ interface Props {
   children: ReactNode;
   style?: TextStyle | TextStyle[];
   numberOfLines?: number;
+  onPress?: () => void;
 }
 
 export function Title({ children, style }: Props) {
@@ -17,8 +18,12 @@ export function Heading({ children, style }: Props) {
   return <Text style={[styles.heading, style]} accessibilityRole="header">{children}</Text>;
 }
 
-export function Body({ children, style, numberOfLines }: Props) {
-  return <Text style={[styles.body, style]} numberOfLines={numberOfLines}>{children}</Text>;
+export function Body({ children, style, numberOfLines, onPress }: Props) {
+  return (
+    <Text style={[styles.body, style]} numberOfLines={numberOfLines} onPress={onPress} accessibilityRole={onPress ? 'link' : undefined}>
+      {children}
+    </Text>
+  );
 }
 
 export function Muted({ children, style, numberOfLines }: Props) {

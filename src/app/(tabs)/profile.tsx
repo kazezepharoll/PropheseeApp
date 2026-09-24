@@ -58,6 +58,14 @@ export default function Profile() {
         </View>
       </Card>
 
+      <Card onPress={() => router.push('/privacy')}>
+        <View style={styles.row}>
+          <MaterialCommunityIcons name="lock-outline" size={22} color={colors.gold} />
+          <Body style={{ flex: 1 }}>Privacy policy and terms</Body>
+          <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textFaint} />
+        </View>
+      </Card>
+
       {state.bookings.length > 0 && (
         <Card>
           <Heading style={styles.small}>Trainer requests</Heading>

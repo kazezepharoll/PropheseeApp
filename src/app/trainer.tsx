@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Linking, StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Screen } from '../components/Screen';
 import { Body, Heading, Muted } from '../components/Typography';
-import { trainerEmail } from '../constants/config';
 import { colors, fonts, radius, space } from '../constants/theme';
 import { trainerSession } from '../data/tiers';
+import { bookingChannel, sendBooking } from '../services/bookings';
 import { newId } from '../services/entropy';
 import { useAppState } from '../state/AppState';
 
@@ -20,6 +20,7 @@ export default function Trainer() {
   const [notes, setNotes] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
 
   const valid = name.trim().length > 1 && contact.trim().length > 4 && preferredTime.trim().length > 1;
 
@@ -33,20 +34,19 @@ export default function Trainer() {
       notes: notes.trim(),
       createdAt: new Date().toISOString(),
     };
-    const subject = encodeURIComponent('PropheSee 1-to-1 trainer session request');
-    const body = encodeURIComponent(
-      `Name: ${booking.name}\nContact: ${booking.contact}\nPreferred time: ${booking.preferredTime}\nPlan: ${state.tier}\n\n${booking.notes}`,
-    );
+    setSending(true);
     try {
-      await Linking.openURL(`mailto:${trainerEmail}?subject=${subject}&body=${body}`);
+      await sendBooking(booking, state.tier);
       addBooking(booking);
       setSent(true);
-    } catch {
-      setError('No email app is available on this device. Please email your request directly.');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSending(false);
     }
   };
 
-  if (!trainerEmail) {
+  if (bookingChannel === 'none') {
     return (
       <Screen edges={[]}>
         <Heading>{trainerSession.name}</Heading>
@@ -62,8 +62,12 @@ export default function Trainer() {
   if (sent) {
     return (
       <Screen edges={[]}>
-        <Heading>Request ready to send</Heading>
-        <Body>Your email app opened with the request filled in. Once you send it, a trainer will reply to arrange a time and payment.</Body>
+        <Heading>{bookingChannel === 'server' ? 'Request sent' : 'Request ready to send'}</Heading>
+        <Body>
+          {bookingChannel === 'server'
+            ? 'Thank you. A trainer will contact you to arrange a time and payment.'
+            : 'Your email app opened with the request filled in. Once you send it, a trainer will reply to arrange a time and payment.'}
+        </Body>
         <Button label="Done" onPress={() => router.back()} />
       </Screen>
     );
@@ -81,7 +85,7 @@ export default function Trainer() {
       <Field label="Anything the trainer should know (optional)" value={notes} onChange={setNotes} multiline />
 
       {error ? <Body style={{ color: colors.danger }}>{error}</Body> : null}
-      <Button label="Send request" onPress={submit} disabled={!valid} />
+      <Button label="Send request" onPress={submit} disabled={!valid} loading={sending} />
     </Screen>
   );
 }
