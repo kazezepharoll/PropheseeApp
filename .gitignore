@@ -41,5 +41,5 @@ yarn-error.*
 /android
 
 # server
-dist-server/
-data/
+/dist-server/
+/data/
