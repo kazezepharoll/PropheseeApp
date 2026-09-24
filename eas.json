@@ -17,11 +17,15 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_SIMULATE_PURCHASES": "true"
+        "EXPO_PUBLIC_SIMULATE_PURCHASES": "true",
+        "EXPO_PUBLIC_API_URL": "https://prophesee-server-production.up.railway.app"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://prophesee-server-production.up.railway.app"
+      }
     }
   },
   "submit": {
