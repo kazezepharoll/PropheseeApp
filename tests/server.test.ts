@@ -141,3 +141,16 @@ test('RevenueCat entitlements map to the highest active tier', () => {
   assert.equal(tierFromEntitlements({ seeker: { expires_date: '2026-02-01T00:00:00Z' } }, now), 'seeker');
   assert.equal(tierFromEntitlements({ master: { expires_date: '2025-12-01T00:00:00Z' }, advanced: { expires_date: null } }, now), 'advanced');
 });
+
+test('serves the privacy policy page without sign-in', async () => {
+  const server = await startServer(18789, { SUPPORT_EMAIL: 'help@example.com' });
+  try {
+    const res = await fetch('http://127.0.0.1:18789/privacy');
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    assert.match(html, /PropheSee Privacy Policy/);
+    assert.match(html, /help@example\.com/);
+  } finally {
+    server.kill();
+  }
+});

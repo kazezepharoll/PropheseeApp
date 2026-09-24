@@ -8,6 +8,7 @@
  *
  * Endpoints (all but /health and /auth/device need `Authorization: Bearer <token>`)
  *   GET  /health
+ *   GET  /privacy                                                    -> privacy policy page (for store listings)
  *   POST /auth/device                                                -> { userId, token }
  *   GET  /me                                                         -> { userId, tier, sessionsToday }
  *   POST /training/sessions                 { levelId, path }        -> { sessionId, trials }
@@ -29,6 +30,7 @@ import type { PathId, Perception } from '../src/types';
 import { issueDeviceAccount, verifyToken } from './auth';
 import { saveBooking } from './bookings';
 import { entitlementsMode, tierFor } from './entitlements';
+import { privacyPage } from './privacy';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const TTL_MS = 6 * 60 * 60 * 1000;
@@ -168,6 +170,10 @@ function text(raw: unknown, field: string, max: number, required = true): string
 async function handle(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://localhost');
   if (req.method === 'OPTIONS') return send(res, 204, {});
+  if (req.method === 'GET' && url.pathname === '/privacy') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+    return res.end(privacyPage());
+  }
   if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ok: true, entitlements: entitlementsMode });
 
   const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim() ?? req.socket.remoteAddress ?? '';

@@ -77,6 +77,7 @@ EXPO_PUBLIC_API_URL=http://<your-computer-ip>:8787 npx expo start --clear
 | `REVENUECAT_SECRET_KEY` | RevenueCat secret API key (v1). Without it the server runs "open" and treats every user as `OPEN_MODE_TIER` (default `master`). |
 | `TRAINER_WEBHOOK_URL` | Optional. Booking requests are posted here as `{ text }` (Slack, Discord, Zapier, Make). They are always saved to `DATA_DIR/bookings.jsonl` too. |
 | `DATA_DIR` | Where bookings are saved (`/data` in Docker). Mount a volume there. |
+| `SUPPORT_EMAIL` | Contact address shown on the public privacy policy page (`/privacy`). |
 | `CORS_ORIGIN` | Restrict browser access if you ship the web build. |
 | `PORT` | Default 8787. |
 
@@ -120,9 +121,10 @@ What you need to do:
 1. **Accounts:** [Expo](https://expo.dev), Apple Developer ($99/year), Google Play Console ($25 once), [RevenueCat](https://www.revenuecat.com) (free until revenue grows). If you want a different app ID than `com.prophesee.app`, change it in `app.json` before the first release.
 2. **Set up products** in the stores and RevenueCat as described above. Set your prices there. The prices in `src/data/tiers.ts` are only a fallback.
 3. **Deploy the server** with `SERVER_SECRET` and `REVENUECAT_SECRET_KEY`. Put its URL in `EXPO_PUBLIC_API_URL`.
-4. **Host the privacy policy** (e.g. as a GitHub Pages page from `docs/privacy-policy.md`), add your support email, and use its URL in both store listings.
-5. **Test on a phone:** `npx eas-cli@latest build --profile preview --platform android` gives an installable APK with simulated plans.
-6. **Release:**
+4. **Privacy policy:** the server publishes it at `/privacy` (live: https://prophesee-server-production.up.railway.app/privacy). Set `SUPPORT_EMAIL` on the server and `EXPO_PUBLIC_SUPPORT_EMAIL` in the app.
+5. **Google Play listing:** text, form answers, screenshots and graphics are ready in `docs/play-store/` (start with `listing.md`).
+6. **Test on a phone:** `npx eas-cli@latest build --profile preview --platform android` gives an installable APK with simulated plans.
+7. **Release:**
    ```bash
    npx eas-cli@latest login
    npx eas-cli@latest build --profile production --platform all
