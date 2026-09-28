@@ -32,4 +32,4 @@ You can reset your progress at any time from Profile. To ask about or delete tra
 
 ## Contact
 
-Questions or data requests: [your support email]
+Questions or data requests: kpharoll@gmail.com

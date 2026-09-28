@@ -121,7 +121,7 @@ What you need to do:
 1. **Accounts:** [Expo](https://expo.dev), Apple Developer ($99/year), Google Play Console ($25 once), [RevenueCat](https://www.revenuecat.com) (free until revenue grows). If you want a different app ID than `com.prophesee.app`, change it in `app.json` before the first release.
 2. **Set up products** in the stores and RevenueCat as described above. Set your prices there. The prices in `src/data/tiers.ts` are only a fallback.
 3. **Deploy the server** with `SERVER_SECRET` and `REVENUECAT_SECRET_KEY`. Put its URL in `EXPO_PUBLIC_API_URL`.
-4. **Privacy policy:** the server publishes it at `/privacy` (live: https://prophesee-server-production.up.railway.app/privacy). Set `SUPPORT_EMAIL` on the server and `EXPO_PUBLIC_SUPPORT_EMAIL` in the app.
+4. **Privacy policy:** the server publishes it at `/privacy` (live: https://prophesee-server-production.up.railway.app/privacy). The support address (kpharoll@gmail.com) is set on the server and in `eas.json`.
 5. **Google Play listing:** text, form answers, screenshots and graphics are ready in `docs/play-store/` (start with `listing.md`).
 6. **Test on a phone:** `npx eas-cli@latest build --profile preview --platform android` gives an installable APK with simulated plans.
 7. **Release:**

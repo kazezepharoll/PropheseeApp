@@ -79,14 +79,12 @@ PropheSee is a training and self-assessment tool. It shows your results honestly
 
 **App category:** Education
 **Tags** (pick up to 5 in Play Console): Religion & Spirituality, Education, Self-improvement, Bible, Training
-**Contact email:** your support email (required, shown publicly)
+**Contact email:** kpharoll@gmail.com
 **Privacy policy URL:**
 
 ```
 https://prophesee-server-production.up.railway.app/privacy
 ```
-
-(Set `SUPPORT_EMAIL` on the Railway service so the page shows your contact address.)
 
 ---
 
@@ -111,7 +109,7 @@ https://prophesee-server-production.up.railway.app/privacy
 
 **Does your app collect or share any of the required user data types?** Yes.
 **Is all collected data encrypted in transit?** Yes (HTTPS).
-**Do you provide a way for users to request that their data is deleted?** Yes: by contacting the support email. Session data on the server is deleted automatically within 6 hours.
+**Do you provide a way for users to request that their data is deleted?** Yes: by emailing kpharoll@gmail.com. Session data on the server is deleted automatically within 6 hours.
 
 | Data type | Collected | Shared | Optional? | Purpose | Notes |
 | --- | --- | --- | --- | --- | --- |
